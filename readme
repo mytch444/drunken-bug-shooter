@@ -1,7 +1,7 @@
-A fun, simple ncurses game made in c to pass time.
+A fun, simple ncurses game I made in c to pass time.
 Move up and down the screen shooting bugs that try
 to get past you. If you let three past you game over.
-It nows has highscores.
+It now has highscores.
 
 To clear highscores (delete the file that is located at ~/.drunken-bug-shooter)
 run
