@@ -154,7 +154,7 @@ void *game() {
 }
 
 void *input() {
-    char d;
+    int d;
     int i;
     
     while (running) {
@@ -162,6 +162,8 @@ void *input() {
         if (d == 'q') running = false;
         if (d == 'j') ar++;
         if (d == 'k') ar--;
+	if (d == KEY_DOWN) ar++;
+	if (d == KEY_UP) ar--;
         if (d == ' ') {
             for (i = 0; i < nbullets; i++) {
                 if (!bullets[i].speed) {
@@ -222,6 +224,7 @@ main(int argc, char *argv[]) {
     cbreak();
     //raw();
     noecho();
+    keypad(wnd, TRUE);
     curs_set(0);
     getmaxyx(wnd, rmax, cmax);
     clear();
