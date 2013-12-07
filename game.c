@@ -44,12 +44,10 @@ void draw(char dc, short r, short c) {
     move(r, c);
     delch();
     insch(dc);
-    refresh();
 }
 
 void drawstring(char *string, short r, short c) {
-    short i;
-    for (i = 0; i < LEN(string); i++) draw(string[i], r, c + i);
+  mvaddnstr(r, c, string, cmax - c);
 }
 
 void drawmessage(char *message, short offset) {
@@ -93,6 +91,14 @@ void resetbug(struct _object *b) {
     (*b).c = -2;
 }
 
+void copyobject(struct _object *n, struct _object *o) {
+  (*n).w = (*o).w;
+  (*n).h = (*o).h;
+  (*n).speed = (*o).speed;
+  (*n).madeof = (*o).madeof;
+  (*n).r = (*o).r;
+  (*n).c = (*o).c;
+}
 
 void *game() {
     short i;
@@ -135,20 +141,24 @@ void *game() {
             level *= 2;
             levels++;
 
-            nbugs += levels;;
+	    object *old;
+	    old = malloc(nbugs * sizeof(object));
+	    for (i = 0; i < nbugs; i++) {
+	      copyobject(&old[i], &bugs[i]);
+	    }
+	    int oldn = nbugs;
+	    
+	    nbugs += levels;;
             bugs = realloc(bugs, nbugs * sizeof(object));
-            for (i = 0; i < nbugs; i++) {
-                resetbug(&bugs[i]); 
+            for (i = 0; i < oldn; i++) {
+	      copyobject(&bugs[i], &old[i]);
             }
-
-            short r, c;
-            for (r = 0; r < rmax; r++)
-                for (c = 0; c < cmax; c++)
-                    draw('#', r, c);
-
-            drawmessage("Next Level", 0);
+	    for (; i < nbugs; i++) {
+	      resetbug(&bugs[i]);
+	    }
         }
 
+	refresh();
         usleep(50000);
     }
 }
