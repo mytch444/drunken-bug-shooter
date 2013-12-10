@@ -1,5 +1,5 @@
 game: game.c
-	gcc -o game game.c -lcurses -lpthread
+	gcc -o drunken-bug-shooter game.c -lcurses -lpthread
 
 clean:
 	rm game
