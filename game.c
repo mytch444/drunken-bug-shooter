@@ -1,3 +1,4 @@
+#include <linux/input.h>
 #include <curses.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -29,7 +30,7 @@ void newbullet(struct _object *b, int r, int c);
 void copyobject(struct _object *n, struct _object *o);
 void up();
 void down();
-void shoot();
+void addbullet();
 
 void game();
 void newgame();
@@ -39,6 +40,7 @@ object *bullets;
 object *bugs;
 object arrow;
 short lives, running, score, level, levels;
+int shootd, upd, downd;
 
 #include "highscores.c"
 #include "input.c"
@@ -55,9 +57,7 @@ short randr(short min, short max) {
 
 void draw(char dc, short r, short c) {
   if (r >= rmax || c >= cmax) return; 
-  move(r, c);
-  delch();
-  insch(dc);
+  mvaddch(r, c, dc);
 }
 
 void drawstring(char *string, short r, short c) {
@@ -173,9 +173,15 @@ void game() {
     
     clear();
 
+    if (shootd) addbullet();
+    if (upd) up();
+    if (downd) down();
+    
     if (arrow.r + arrow.h / 2 > rmax - 1) arrow.r = rmax - 1 - arrow.h / 2;
     if (arrow.r + arrow.h / 2 < 0) arrow.r = -arrow.h / 2;
 
+    drawobject(arrow);
+    
     // draw and update bugs
     for (i = 0; i < nbugs; i++) {
       drawobject(bugs[i]);
@@ -190,11 +196,10 @@ void game() {
       for (j = 0; j < nbullets; j++)
 	if (bullets[j].speed && collides(bugs[i], bullets[j])) {
 	  bullets[j].speed = bullets[j].c = 0;
-
+	  score++;
 	  bugs[i].health--;
 	  if (bugs[i].health < 0) {
 	    newbug(&bugs[i]);
-	    score++;
 	  }
 	}
     }
@@ -206,8 +211,6 @@ void game() {
       bullets[i].c -= bullets[i].speed;
       if (bullets[i].c < -bullets[i].w) bullets[i].speed = 0;
     }
-
-    drawobject(arrow);
     
     char string[10] = {'\0'};
     sprintf(string, "s: %i   l: %i", score, lives);
@@ -248,7 +251,7 @@ void down() {
   arrow.r++;
 }
 
-void shoot() {
+void addbullet() {
   int i;
   for (i = 0; i < nbullets; i++) {
     if (!bullets[i].speed) {
@@ -302,7 +305,6 @@ void newgame() {
   drawmessage("Anything else to start", 2);
   d = getch();
   if (d == 'q') {
-    endwin();
     return;
   }
   
@@ -313,25 +315,24 @@ void newgame() {
   
   pthread_cancel(pth);
   
-  if (lives <= 0) {
-    clear();
-    drawmessage("Game Over", -1);
-    char string[10] = {'\0'};
-    sprintf(string, "%i", score);
-    drawmessage(string, 0);
-  } else {
-    endwin();
-    return;
-  }
-
-  while (getch() != '\n');
   clear();
+
+  drawmessage("Game Over", -1);
+  char string[10] = {'\0'};
+  sprintf(string, "%i", score);
+  drawmessage(string, 0);
+  drawmessage("Return to continue", 2);
+
+  while ((d = getch()) && d != '\n')
+    if (d == 'q') return;
   
+  clear();
   highscore();
-  while (getch() != '\n');
+
   clear();
   highscores();
-  while (getch() != '\n');
+  while ((d = getch()) && d != '\n')
+    if (d == 'q') return;
 }
 
 main(int argc, char *argv[]) {

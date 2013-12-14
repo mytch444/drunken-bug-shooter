@@ -4,8 +4,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
-static struct termios tty_attr_old;
-static int old_keyboard_mode;
+char *keyboard = "/dev/input/event11";
 
 /*
   I am trying to get raw input so I can shoot while moving
@@ -13,71 +12,74 @@ static int old_keyboard_mode;
   Any help would be great.
  */
 
-int setupkeyboard() {
-  struct termios tty_attr;
-  int flags;
-
-  flags = fcntl(0, F_GETFL);
-  flags |= O_NONBLOCK;
-  fcntl(0, F_SETFL, flags);
-
-  if (ioctl(0, KDGKBMODE, &old_keyboard_mode) < 0) {
-    return 0;
-  }
-
-  tcgetattr(0, &tty_attr_old);
+int rawinput() {
+  int fd, rd, value;
+  char name[256] = "Unknown";
+  char *device = NULL;
   
-  tty_attr = tty_attr_old;
-  tty_attr.c_lflag &= ~(ICANON | ECHO | ISIG);
-  tty_attr.c_iflag &= ~(ISTRIP | INLCR | ICRNL | IGNCR | IXON | IXOFF);
-  tcsetattr(0, TCSANOW, &tty_attr);
+  device = keyboard;
 
-  ioctl(0, KDSKBMODE, K_RAW);
-  return 1;
-}
+  if ((fd = open(device, O_RDONLY | O_NONBLOCK)) == -1)
+    return 1;
 
-void restorekeyboard() {
-  tcsetattr(0, TCSAFLUSH, &tty_attr_old);
-  ioctl(0, KDSKBMODE, old_keyboard_mode);
-}
+  struct input_event ev[64];
+  int size = sizeof(struct input_event);
 
-void readkeyboard() {
-  char buf[2];
-  int res;
-  
-  running = 1;
+  ioctl(fd, EVIOCGNAME (sizeof (name)), name);
+
   while (running) {
-    res = read(0, &buf[0], 1);
+    //    usleep(1000);
+    
+    rd = read (fd, ev, size * 64);
 
-    switch (buf[0]) {
-    case 0x01:
+    switch (ev[0].code) {
+    case 16:
       running = 0;
+      break;
+    case 57:
+      shootd = 1;
+      break;
+    case 103:
+      upd = 1;
+      break;
+    case 108:
+      downd = 1;
+      break;
+    }
+
+    switch (ev[1].code) {
+    case 16:
+      running = 0;
+      break;
+    case 57:
+      shootd = 0;
+      break;
+    case 103:
+      upd = 0;
+      break;
+    case 108:
+      downd = 0;
       break;
     }
   }
+
+  return 0;
 }
 
 void curses_input() {
   int d;
 
-  running = 1;
   while (running) {
     d = getch();
-    if (d == 'q') running = false;
+
+    if (d == 'q') running = 0;
     if (d == KEY_DOWN) down();
     if (d == KEY_UP) up();
-    if (d == ' ') shoot();    
+    if (d == ' ') addbullet();;
   }
 }
 
 void *input() {
-  running = 1;
-  
-  /*  if (setupkeyboard()) {
-    readkeyboard();
-    restorekeyboard(); 
-  } else {
-  */
-  curses_input();
-    //  }
+  //  if (rawinput() == 1)
+    curses_input();
 }
